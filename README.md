@@ -1,26 +1,56 @@
-## Using HashiCorp Vault in CloudFoundry  
+# Using HashiCorp Vault with Cloud Foundry  
 
-#### Running locally
+This is a simple example of an integration between a Spring MVC application powered [Spring Boot 2](http://projects.spring.io/spring-boot/) and [Spring Cloud Finchley RC2](https://spring.io/blog/2018/05/29/spring-cloud-finchley-rc2-has-been-released) and [Hashicorp Vault](https://www.vaultproject.io).  
 
-1. Start vault:
+Credit to [Zoltan Altfatter](https://blog.mimacom.com/hashicorp-vault-in-cloud-foundry-environment/).
+
+## Prerequisites
+
+* [CF CLI](https://github.com/cloudfoundry/cli#downloads) 6.37.0 or better if you want to push the application to a Cloud Foundry (CF) instance
+* [httpie](https://httpie.org/#installation) 0.9.9 or better to simplify interaction with API endpoints
+* Hashicorp [Vault](https://www.vaultproject.io/downloads.html) 0.12.0 or better
+* Java [JDK](http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html) 1.8u172 or better
+* [jq](https://stedolan.github.io/jq/) 1.5 or better to 
+* [Maven](https://maven.apache.org/download.cgi) 3.5.3 or better
+* [ngrok](https://ngrok.com) 2.28 or better to expose local servers behind NATs and firewalls to the public internet over secure tunnels
+
+
+## Clone
+
+```
+git clone https://github.com/pacphi/cloudfoundry-with-vault-demo.git
+```
+
+## How to build
+
+```
+cd cloudfoundry-with-vault-demo
+mvn clean package
+```
+
+## How to run locally
+
+1. Start vault
 
 ```bash
 vault server -config inmemory.conf
 ```
 
-2. In another terminal set the VAULT_ADDR before initializing Vault:
+2. In another terminal set the VAULT_ADDR before initializing Vault
 
 ```bash
 export VAULT_ADDR=http://127.0.0.1:8200
 ```   
 
-2. Initialize vault:
+2. Initialize vault
 
 ```bash
 vault init -key-shares=5 -key-threshold=2
 ```
 
-3. Copy the `Initial Root Token` we will still need it.
+3. Copy the `Initial Root Token` 
+
+> We will need it later.
 
 ```bash
 export VAULT_TOKEN=<token>
@@ -29,14 +59,14 @@ export VAULT_TOKEN=<token>
 Vault requires an authenticated access to proceed from here on. 
 Vault uses tokens as generic authentication on its transport level.
 
-4. Vault is in `sealed` mode, let's unseal it:
+4. Vault is in `sealed` mode, let's unseal it
 
 ```
 vault unseal <key>
 vault unseal <key>
 ```
 
-5. Verify that Vault is in `unsealed` mode:
+5. Verify that Vault is in `unsealed` mode
 
 ```bash
 vault status | grep Sealed
@@ -44,7 +74,7 @@ vault status | grep Sealed
 Sealed: false
 ```
 
-6. Write a secret into the `secret` backend:
+6. Write a secret into the `secret` backend
 
 ```bash
 vault write secret/vault-demo message='I find your lack of faith disturbing.'
@@ -58,7 +88,7 @@ export VAULT_TOKEN=<token>
 java -jar target/cloudfoundry-with-vault-demo-0.0.1-SNAPSHOT.jar --spring.cloud.vault.token=`echo $VAULT_TOKEN`
 ```
 
-8. Request the GET localhost:8080
+8. Make a GET request to http://localhost:8080
 
 ```bash
 http :8080
@@ -94,21 +124,23 @@ http :8080
 message:'Now, young Skywalker, you will die.'
 ```
 
-## Running on Cloud Foundry
+## How to run on Cloud Foundry
 
-1. Using [Pivolt CloudFoundry environment](https://run.pivotal.io/)
+1. Using [Pivotal Web Services](https://run.pivotal.io/)
+
+> This is Pivotal's Cloud Foundry as a Service offering
 
 ```bash
 cf login -a api.run.pivotal.io
 ```
 
-2. Get the [Open Service Broker API](https://www.openservicebrokerapi.org/) implementation from HashiCorp:
+2. Get the [Open Service Broker API](https://www.openservicebrokerapi.org/) implementation from HashiCorp
 
 ```bash
 git clone https://github.com/hashicorp/vault-service-broker
 ```
 
-3. Needed to change the `DefaultServiceID` and `DefaultServiceName` in the `main.go` file
+3. You will  to change the `DefaultServiceID` and `DefaultServiceName` in the `main.go` file
 
 4. Deploy the broker
    
@@ -127,7 +159,7 @@ Forwarding http://3db1eef2.ngrok.io -> localhost:8200
 Forwarding https://3db1eef2.ngrok.io -> localhost:8200
 ```
 
-6. Verify on the web interface at `http://localhost:4040`
+6. Open a browser and verify ngrok's web interface is available at `http://localhost:4040`
 
 7. Set the following environment variables
 
@@ -142,6 +174,8 @@ The broker is configured to use basic authentication
 VAULT_USERNAME=vault
 VAULT_PASSWORD=secret
 ```
+
+> You'll want to replace the username and password values above with your own
 
 8. Configure the environment variables
 
@@ -198,7 +232,7 @@ name                      requested state   instances   memory   disk   urls
 my-vault-broker-service   started           1/1         256M     1G     vault-demo-twiggiest-sennit.cfapps.io
 ```  
 
-15. Get the broker url:
+15. Get the broker url
 
 ```bash
 VAULT_BROKER_URL=$(cf app my-vault-broker-service | grep routes: | awk '{print $2}')
@@ -242,15 +276,17 @@ cf service-brokers
 cf create-service-broker my-vault-service-broker "${VAULT_USERNAME}" "${VAULT_PASSWORD}" "https://${VAULT_BROKER_URL}" --space-scoped
 ```
 
-You need to specify the `--space-scoped` and the `service ids` and `service name` must be unique. See `https://docs.cloudfoundry.org/services/managing-service-brokers.html`
+> You need to specify the `--space-scoped` and the `service ids` and `service name` must be unique. See `https://docs.cloudfoundry.org/services/managing-service-brokers.html`
 
-18. Create a service instance:
+18. Create a service instance
 
 ```bash
 cf create-service my-hashicorp-vault shared my-vault-service
 ``` 
 
-19. Verify the result:
+> Note that the first parameter to `cf create-service` must match the value of `DefaultServiceName` that you set in Step 3 above
+
+19. Verify the result
 
 ```bash
 cf services
@@ -299,7 +335,7 @@ PUT /v1/cf/broker/0b24f466-9a54-4215-852e-2bcfab428a82/5cf104c9-4515-40f3-94de-a
 POST /v1/auth/token/create/cf-0b24f466-9a54-4215-852e-2bcfab428a82
 ```
 
-19. Retrieve credentials for this instance:
+19. Retrieve credentials for this instance
 
 ```bash
 cf service-key my-vault-service my-vault-service-key
@@ -329,9 +365,9 @@ cf service-key my-vault-service my-vault-service-key
 cf push --random-route --no-start 
 ```
 
-In the application, we can leverage these services using the following configuration in the bootstrap.yml file. 
+In the application, we can leverage these services using the following configuration in the `bootstrap.yml` file. 
 Note that we are only able to access the exposed backends.
-`
+
 ```bash
 spring:
   application:
@@ -356,10 +392,16 @@ cf bind-service vault-demo my-vault-service
 cf start vault-demo
 ```
 
-23. Verif that the application has started succesfully:
+23. Verify that the application has started successfully
 
 ```bash
 cf logs --recent vault-demo
+```
+
+Make a note of the organization id in the log output.  You will need this value for the next step.  Consult the `LeaseAwareVaultPropertySource` in sample log output below.
+
+```
+2018-06-12T06:55:36.26-0700 [APP/PROC/WEB/0] OUT 2018-06-12 13:55:36.259  INFO 14 --- [           main] b.c.PropertySourceBootstrapConfiguration : Located property source: CompositePropertySource {name='vault', propertySources=[LeaseAwareVaultPropertySource {name='cf/0b24f466-9a54-4215-852e-2bcfab428a82/secret/vault-demo/cloud'}, LeaseAwareVaultPropertySource {name='cf/0b24f466-9a54-4215-852e-2bcfab428a82/secret/vault-demo'}, LeaseAwareVaultPropertySource {name='cf/0b24f466-9a54-4215-852e-2bcfab428a82/secret/application/cloud'}, LeaseAwareVaultPropertySource {name='cf/0b24f466-9a54-4215-852e-2bcfab428a82/secret/application'}]}
 ```
 
 24. Let's write a secret into the Vault to the given generic backend and send a refresh command.
@@ -369,13 +411,17 @@ vault write cf/0b24f466-9a54-4215-852e-2bcfab428a82/secret/vault-demo message='V
 http post https://vault-demo-twiggiest-sennit.cfapps.io/actuator/refresh
 ```
 
+> Replace application URL with your own
+
 25. We can verify that the secret is retrieved via
 
 ```bash
 http get http://vault-demo-twiggiest-sennit.cfapps.io
 
-message:Vault Rocks
+message: Vault Rocks
 ```
+
+> Replace application URL with your own
 
 ## Resources
 
