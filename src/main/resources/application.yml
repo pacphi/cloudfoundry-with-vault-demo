@@ -4,7 +4,6 @@ server:
 management:
   endpoints:
     web:
-      expose: ["health", "info", "refresh", "env"]
-  endpoint:
-    health:
-      show-details: true
+      exposure: 
+        include: health,info,refresh,env
+

@@ -63,7 +63,7 @@ java -jar target/cloudfoundry-with-vault-demo-0.0.1-SNAPSHOT.jar --spring.cloud.
 ```bash
 http :8080
 
-message:I find your lack of faith disturbing.
+message: I find your lack of faith disturbing.
 ```
 
 9. Update the secret inside Vault
@@ -77,7 +77,7 @@ vault write secret/vault-demo message='Now, young Skywalker, you will die.'
 ```bash
 http :8080
 
-message:I find your lack of faith disturbing.
+message: I find your lack of faith disturbing.
 ```
 
 11. Send refresh command to the application
@@ -94,7 +94,7 @@ http :8080
 message:'Now, young Skywalker, you will die.'
 ```
 
-## Running on CloudFoundry
+## Running on Cloud Foundry
 
 1. Using [Pivolt CloudFoundry environment](https://run.pivotal.io/)
 
@@ -164,7 +164,7 @@ cf env my-vault-broker-service
 cf start my-vault-broker-service
 ```
 
-11. Check the logs to verify the succesfull start
+11. Check the logs to verify a successful start
 
 ```bash
 cf logs --recent my-vault-broker-service
@@ -281,7 +281,9 @@ Mount the transit backend at /cf/<instance_id>/transit/
 
 A policy named `cf-<instance_id>` is also created for this service instance which grants read-only access to `cf/<organization_id>/*`, read-write access to `cf/<space_id>/*` and full access to `cf/<instance_id>/*`
 
-21. Create a service key: (This failed in Swisscom's CloudFoundry)
+21. Create a service key
+
+> (This failed in Swisscom's Cloud Foundry)
 
 ```bash
 cf create-service-key my-vault-service my-vault-service-key
@@ -375,7 +377,10 @@ http get http://vault-demo-twiggiest-sennit.cfapps.io
 message:Vault Rocks
 ```
 
-## Resources:
-[Spring Cloud project for creating Cloud Foundry service brokers](https://github.com/spring-cloud/spring-cloud-cloudfoundry-service-broker)
-[https://spring.io/blog/2016/06/24/managing-secrets-with-vault](https://spring.io/blog/2016/06/24/managing-secrets-with-vault)
-[https://spring.io/blog/2015/04/27/binding-to-data-services-with-spring-boot-in-cloud-foundry](https://spring.io/blog/2015/04/27/binding-to-data-services-with-spring-boot-in-cloud-foundry)
+## Resources
+
+* [Spring Cloud project for creating Cloud Foundry service brokers](https://github.com/spring-cloud/spring-cloud-cloudfoundry-service-broker)
+
+* [Managing Secrets with Vault](https://spring.io/blog/2016/06/24/managing-secrets-with-vault)
+
+* [Binding to Data Services with Spring Boot in Cloud Foundry](https://spring.io/blog/2015/04/27/binding-to-data-services-with-spring-boot-in-cloud-foundry)
