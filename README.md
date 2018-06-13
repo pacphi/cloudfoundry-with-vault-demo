@@ -310,10 +310,10 @@ PUT /v1/auth/token/roles/cf-0b24f466-9a54-4215-852e-2bcfab428a82
 
 When  a new service instance is provisioned using the broker, the following paths will be mounted:
 
-Mount the generic backend at /cf/<organization_id>/secret/
-Mount the generic backend at /cf/<space_id>/secret/
-Mount the generic backend at /cf/<instance_id>/secret/
-Mount the transit backend at /cf/<instance_id>/transit/
+* Mount the generic backend at `/cf/<organization_id>/secret/`
+* Mount the generic backend at `/cf/<space_id>/secret/`
+* Mount the generic backend at `/cf/<instance_id>/secret/`
+* Mount the transit backend at `/cf/<instance_id>/transit/`
 
 A policy named `cf-<instance_id>` is also created for this service instance which grants read-only access to `cf/<organization_id>/*`, read-write access to `cf/<space_id>/*` and full access to `cf/<instance_id>/*`
 
