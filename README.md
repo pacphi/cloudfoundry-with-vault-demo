@@ -28,7 +28,7 @@ cd cloudfoundry-with-vault-demo
 mvn clean package
 ```
 
-## How to run locally
+## How to start and prepare Vault
 
 1. Start vault
 
@@ -62,8 +62,8 @@ Vault uses tokens as generic authentication on its transport level.
 4. Vault is in `sealed` mode, let's unseal it
 
 ```
-vault unseal <key>
-vault unseal <key>
+vault operator unseal <key>
+vault operator unseal <key>
 ```
 
 5. Verify that Vault is in `unsealed` mode
@@ -79,6 +79,14 @@ Sealed: false
 ```bash
 vault write secret/vault-demo message='I find your lack of faith disturbing.'
 ```
+
+## How to run Locally
+
+### Token based authentication
+
+We'll authenticate using the root [token](https://www.vaultproject.io/docs/auth/token.html) we exported as an environment variable.
+
+> Don't do this in production!
 
 7. Start the application in another terminal 
 
@@ -124,7 +132,73 @@ http :8080
 message:'Now, young Skywalker, you will die.'
 ```
 
+### AppRole based authentication
+
+The [AppRole](https://www.vaultproject.io/docs/auth/approle.html#configuration) auth method allows machines or apps to authenticate with Vault-defined roles.
+
+13. Enable the AppRole auth method
+
+```bash
+vault auth enable approle
+```
+
+14. Set policy to allow AppRole to access key-value pairs
+
+```bash
+vault policy write vault-demo vault-demo.hcl
+```
+
+15. Setup a new role
+
+```bash
+vault write auth/approle/role/vault-demo \
+    secret_id_ttl=120m \
+    token_num_uses=10 \
+    token_ttl=60m \
+    token_max_ttl=120m \
+    secret_id_num_uses=10 \
+    policies="vault-demo"
+```
+
+16. Get role-id and secret-id
+
+```bash
+vault read auth/approle/role/vault-demo/role-id
+vault write -f auth/approle/role/vault-demo/secret-id
+```
+
+17. Capture role-id and secret-id as environment variables
+
+```bash
+export VAULT_ROLE=bde2076b-cccb-3cf0-d57e-bca7b1e83a52
+export VAULT_SECRET=66eec22c-50c7-04e3-f86a-10623aebf163
+```
+
+> Replace role-id and secret-id above with your own
+
+18. Restart application
+
+```bash
+java -jar target/cloudfoundry-with-vault-demo-0.0.1-SNAPSHOT.jar \
+--spring.cloud.vault.authentication=APPROLE \
+--spring.cloud.vault.app-role.role-id=`echo $VAULT_ROLE` \
+--spring.cloud.vault.app-role.secret-id=`echo $VAULT_SECRET`
+```
+
+19. Verify that the application knows about the latest secret
+
+```bash
+http :8080
+
+message:'Now, young Skywalker, you will die.'
+```
+
+
 ## How to run on Cloud Foundry
+
+### Token based authentication w/ Service Broker
+
+> The service broker implementation is currently limited to token-based authentication scheme
 
 1. Using [Pivotal Web Services](https://run.pivotal.io/)
 
@@ -319,14 +393,12 @@ A policy named `cf-<instance_id>` is also created for this service instance whi
 
 21. Create a service key
 
-> (This failed in Swisscom's Cloud Foundry)
-
 ```bash
 cf create-service-key my-vault-service my-vault-service-key
 cf service-keys my-vault-service
 ```
 
-18. Verify the received requests for Vault using the Ngrok Inspect UI
+22. Verify the received requests for Vault using the Ngrok Inspect UI
 
 ```bash
 PUT /v1/auth/token/renew-self
@@ -335,7 +407,7 @@ PUT /v1/cf/broker/0b24f466-9a54-4215-852e-2bcfab428a82/5cf104c9-4515-40f3-94de-a
 POST /v1/auth/token/create/cf-0b24f466-9a54-4215-852e-2bcfab428a82
 ```
 
-19. Retrieve credentials for this instance
+23. Retrieve credentials for this instance
 
 ```bash
 cf service-key my-vault-service my-vault-service-key
@@ -359,7 +431,7 @@ cf service-key my-vault-service my-vault-service-key
 }
 ```
 
-20. Deploy the Vault client application
+24. Deploy the Vault client application
 
 ```bash
 cf push --random-route --no-start 
@@ -380,19 +452,19 @@ spring:
         backend: ${vcap.services.my-vault-service.credentials.backends.generic:secret}
 ```
 
-21. Bind the `my-vault-service` to the `vault-demo` application
+25. Bind the `my-vault-service` to the `vault-demo` application
 
 ```bash
 cf bind-service vault-demo my-vault-service
 ```
 
-22. Start the Vault client application
+26. Start the Vault client application
 
 ```bash
 cf start vault-demo
 ```
 
-23. Verify that the application has started successfully
+27. Verify that the application has started successfully
 
 ```bash
 cf logs --recent vault-demo
@@ -404,7 +476,7 @@ Make a note of the organization id in the log output.  You will need this value 
 2018-06-12T06:55:36.26-0700 [APP/PROC/WEB/0] OUT 2018-06-12 13:55:36.259  INFO 14 --- [           main] b.c.PropertySourceBootstrapConfiguration : Located property source: CompositePropertySource {name='vault', propertySources=[LeaseAwareVaultPropertySource {name='cf/0b24f466-9a54-4215-852e-2bcfab428a82/secret/vault-demo/cloud'}, LeaseAwareVaultPropertySource {name='cf/0b24f466-9a54-4215-852e-2bcfab428a82/secret/vault-demo'}, LeaseAwareVaultPropertySource {name='cf/0b24f466-9a54-4215-852e-2bcfab428a82/secret/application/cloud'}, LeaseAwareVaultPropertySource {name='cf/0b24f466-9a54-4215-852e-2bcfab428a82/secret/application'}]}
 ```
 
-24. Let's write a secret into the Vault to the given generic backend and send a refresh command.
+28. Let's write a secret into the Vault to the given generic backend and send a refresh command.
 
 ```bash
 vault write cf/0b24f466-9a54-4215-852e-2bcfab428a82/secret/vault-demo message='Vault Rocks'
@@ -413,7 +485,7 @@ http post https://vault-demo-twiggiest-sennit.cfapps.io/actuator/refresh
 
 > Replace application URL with your own
 
-25. We can verify that the secret is retrieved via
+29. We can verify that the secret is retrieved via
 
 ```bash
 http get http://vault-demo-twiggiest-sennit.cfapps.io
