@@ -502,3 +502,5 @@ message: Vault Rocks
 * [Managing Secrets with Vault](https://spring.io/blog/2016/06/24/managing-secrets-with-vault)
 
 * [Binding to Data Services with Spring Boot in Cloud Foundry](https://spring.io/blog/2015/04/27/binding-to-data-services-with-spring-boot-in-cloud-foundry)
+
+* [Authenticating Applications with HashiCorp Vault AppRole](https://www.hashicorp.com/blog/authenticating-applications-with-vault-approle)
