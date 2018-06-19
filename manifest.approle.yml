@@ -1,0 +1,12 @@
+---
+applications:
+- name: vault-demo
+  memory: 1G
+  path: target/cloudfoundry-with-vault-demo-0.0.1-SNAPSHOT.jar
+  buildpack: java_buildpack
+  env:
+    JAVA_OPTS: -Djava.security.egd=file:///dev/urandom
+    SPRING_CLOUD_VAULT_URI: ${VAULT_ADDR}
+    SPRING_CLOUD_VAULT_AUTHENTICATION: APPROLE
+    SPRING_CLOUD_VAULT_APP-ROLE_ROLE-ID: ${VAULT_ROLE}
+    SPRING_CLOUD_VAULT_APP-ROLE_SECRET-ID: ${VAULT_SECRET}

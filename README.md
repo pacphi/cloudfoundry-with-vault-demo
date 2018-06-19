@@ -196,35 +196,21 @@ message:'Now, young Skywalker, you will die.'
 
 ## How to run on Cloud Foundry
 
-### Token based authentication w/ Service Broker
-
-> The service broker implementation is currently limited to token-based authentication scheme
-
-1. Using [Pivotal Web Services](https://run.pivotal.io/)
-
-> This is Pivotal's Cloud Foundry as a Service offering
+Login via an API endpoint e.g., [Pivotal Web Services](https://run.pivotal.io/)
 
 ```bash
 cf login -a api.run.pivotal.io
 ```
 
-2. Get the [Open Service Broker API](https://www.openservicebrokerapi.org/) implementation from HashiCorp
+### AppRole based authentication
+
+1. Deploy the Vault client application
 
 ```bash
-git clone https://github.com/hashicorp/vault-service-broker
+cf push --random-route --no-start -f manifest.approle.yml
 ```
 
-3. You will  to change the `DefaultServiceID` and `DefaultServiceName` in the `main.go` file
-
-4. Deploy the broker
-   
-```bash
-cf push my-vault-broker-service -m 256M --random-route --no-start 
-```
-   
-The `--no-start` makes sure it is not started after it is deployed.
-
-5. Expose the locally running vault via [ngrok](https://ngrok.com/)
+2. Expose the locally running vault via [ngrok](https://ngrok.com/)
 
 ```
 ngrok http 8200
@@ -233,9 +219,77 @@ Forwarding http://3db1eef2.ngrok.io -> localhost:8200
 Forwarding https://3db1eef2.ngrok.io -> localhost:8200
 ```
 
-6. Open a browser and verify ngrok's web interface is available at `http://localhost:4040`
+3. Open a browser and verify ngrok's web interface is available at `http://localhost:4040`
 
-7. Set the following environment variables
+4. Set the following environment variables
+
+```bash
+VAULT_ADDR=<ngrok_url>
+```
+
+5. Configure the environment variables
+
+```bash
+cf set-env vault-demo VAULT_ADDR ${VAULT_ADDR}
+cf set-env vault-demo VAULT_ROLE ${VAULT_ROLE}
+cf set-env vault-demo VAULT_SECRET ${VAULT_SECRET}
+```
+
+6. Start the Vault client application
+
+```bash
+cf start vault-demo
+```
+
+7. Verify that the application has started successfully
+
+```bash
+cf logs --recent vault-demo
+```
+
+8. Verify that the application knows about the latest secret
+
+```bash
+http vault-demo-terrific-fossa.cfapps.io
+
+message:'Now, young Skywalker, you will die.'
+```
+
+> Replace application URL above with your own
+
+
+### Token based authentication w/ Service Broker
+
+> The service broker implementation is currently limited to token-based authentication scheme
+
+1. Get the [Open Service Broker API](https://www.openservicebrokerapi.org/) implementation from HashiCorp
+
+```bash
+git clone https://github.com/hashicorp/vault-service-broker
+```
+
+2. You will  to change the `DefaultServiceID` and `DefaultServiceName` in the `main.go` file
+
+3. Deploy the broker
+   
+```bash
+cf push my-vault-broker-service -m 256M --random-route --no-start 
+```
+   
+> The `--no-start` makes sure it is not started after it is deployed.
+
+4. Expose the locally running vault via [ngrok](https://ngrok.com/)
+
+```
+ngrok http 8200
+
+Forwarding http://3db1eef2.ngrok.io -> localhost:8200
+Forwarding https://3db1eef2.ngrok.io -> localhost:8200
+```
+
+5. Open a browser and verify ngrok's web interface is available at `http://localhost:4040`
+
+6. Set the following environment variables
 
 ```bash
 VAULT_ADDR=<ngrok_url>
@@ -251,7 +305,7 @@ VAULT_PASSWORD=secret
 
 > You'll want to replace the username and password values above with your own
 
-8. Configure the environment variables
+7. Configure the environment variables
 
 ```bash
 cf set-env my-vault-broker-service VAULT_ADDR ${VAULT_ADDR}
@@ -260,25 +314,25 @@ cf set-env my-vault-broker-service SECURITY_USER_NAME ${VAULT_USERNAME}
 cf set-env my-vault-broker-service SECURITY_USER_PASSWORD ${VAULT_PASSWORD}
 ```
 
-9. Verify the configured environment variables 
+8. Verify the configured environment variables 
 
 ```bash
 cf env my-vault-broker-service
 ```
 
-10. Start the broker:
+9. Start the broker
 
 ```bash
 cf start my-vault-broker-service
 ```
 
-11. Check the logs to verify a successful start
+10. Check the logs to verify a successful start
 
 ```bash
 cf logs --recent my-vault-broker-service
 ```
 
-12. Verify in the Ngrok Inspect UI the activity requests sent to the exposed Vault broker
+11. Verify in the Ngrok Inspect UI the activity requests sent to the exposed Vault broker
 
 ```bash
 GET /v1/sys/mounts
@@ -287,7 +341,7 @@ POST /v1/sys/mounts/cf/broker
 GET /v1/cf/broker
 ```
  
-13. The service broker created a new mount
+12. The service broker created a new mount
  
 ```
 vault mounts
@@ -297,7 +351,7 @@ cf/broker/  generic    generic_4c6ea7ec    n/a     system       system   false  
 ...
 ``` 
 
-14. View the running broker:
+13. View the running broker
 
 ```
 cf apps
@@ -306,13 +360,13 @@ name                      requested state   instances   memory   disk   urls
 my-vault-broker-service   started           1/1         256M     1G     vault-demo-twiggiest-sennit.cfapps.io
 ```  
 
-15. Get the broker url
+14. Get the broker url
 
 ```bash
 VAULT_BROKER_URL=$(cf app my-vault-broker-service | grep routes: | awk '{print $2}')
 ```
 
-16. Get the catalog information:
+15. Get the catalog information
 
 ```bash
 curl ${VAULT_USERNAME}:${VAULT_PASSWORD}@${VAULT_BROKER_URL}/v2/catalog | jq
@@ -343,7 +397,7 @@ curl ${VAULT_USERNAME}:${VAULT_PASSWORD}@${VAULT_BROKER_URL}/v2/catalog | jq
 }
 ```
 
-17. Create a service broker:
+16. Create a service broker
 
 ```bash
 cf service-brokers
@@ -352,7 +406,7 @@ cf create-service-broker my-vault-service-broker "${VAULT_USERNAME}" "${VAULT_PA
 
 > You need to specify the `--space-scoped` and the `service ids` and `service name` must be unique. See `https://docs.cloudfoundry.org/services/managing-service-brokers.html`
 
-18. Create a service instance
+17. Create a service instance
 
 ```bash
 cf create-service my-hashicorp-vault shared my-vault-service
@@ -360,7 +414,7 @@ cf create-service my-hashicorp-vault shared my-vault-service
 
 > Note that the first parameter to `cf create-service` must match the value of `DefaultServiceName` that you set in Step 3 above
 
-19. Verify the result
+18. Verify the result
 
 ```bash
 cf services
@@ -369,7 +423,7 @@ name               service              plan     bound apps   last operation
 my-vault-service   my-hashicorp-vault   shared                create succeeded
 ```
 
-20. Verify the HTTP requests sent the exposed Vault service using the Ngrok Inspect UI:
+19. Verify the HTTP requests sent the exposed Vault service using the Ngrok Inspect UI:
 
 ```bash
 POST /v1/sys/mounts/cf/0b24f466-9a54-4215-852e-2bcfab428a82/secret
@@ -391,14 +445,14 @@ When  a new service instance is provisioned using the broker, the following pat
 
 A policy named `cf-<instance_id>` is also created for this service instance which grants read-only access to `cf/<organization_id>/*`, read-write access to `cf/<space_id>/*` and full access to `cf/<instance_id>/*`
 
-21. Create a service key
+20. Create a service key
 
 ```bash
 cf create-service-key my-vault-service my-vault-service-key
 cf service-keys my-vault-service
 ```
 
-22. Verify the received requests for Vault using the Ngrok Inspect UI
+21. Verify the received requests for Vault using the Ngrok Inspect UI
 
 ```bash
 PUT /v1/auth/token/renew-self
@@ -407,7 +461,7 @@ PUT /v1/cf/broker/0b24f466-9a54-4215-852e-2bcfab428a82/5cf104c9-4515-40f3-94de-a
 POST /v1/auth/token/create/cf-0b24f466-9a54-4215-852e-2bcfab428a82
 ```
 
-23. Retrieve credentials for this instance
+22. Retrieve credentials for this instance
 
 ```bash
 cf service-key my-vault-service my-vault-service-key
@@ -431,14 +485,13 @@ cf service-key my-vault-service my-vault-service-key
 }
 ```
 
-24. Deploy the Vault client application
+23. Deploy the Vault client application
 
 ```bash
-cf push --random-route --no-start 
+cf push --random-route --no-start -f manifest.token.yml
 ```
 
-In the application, we can leverage these services using the following configuration in the `bootstrap.yml` file. 
-Note that we are only able to access the exposed backends.
+In the application, we can leverage these services using the following configuration in the `bootstrap.yml` file. Note that we are only able to access the exposed backends.
 
 ```bash
 spring:
@@ -452,19 +505,19 @@ spring:
         backend: ${vcap.services.my-vault-service.credentials.backends.generic:secret}
 ```
 
-25. Bind the `my-vault-service` to the `vault-demo` application
+24. Bind the `my-vault-service` to the `vault-demo` application
 
 ```bash
 cf bind-service vault-demo my-vault-service
 ```
 
-26. Start the Vault client application
+25. Start the Vault client application
 
 ```bash
 cf start vault-demo
 ```
 
-27. Verify that the application has started successfully
+26. Verify that the application has started successfully
 
 ```bash
 cf logs --recent vault-demo
@@ -476,7 +529,7 @@ Make a note of the organization id in the log output.  You will need this value 
 2018-06-12T06:55:36.26-0700 [APP/PROC/WEB/0] OUT 2018-06-12 13:55:36.259  INFO 14 --- [           main] b.c.PropertySourceBootstrapConfiguration : Located property source: CompositePropertySource {name='vault', propertySources=[LeaseAwareVaultPropertySource {name='cf/0b24f466-9a54-4215-852e-2bcfab428a82/secret/vault-demo/cloud'}, LeaseAwareVaultPropertySource {name='cf/0b24f466-9a54-4215-852e-2bcfab428a82/secret/vault-demo'}, LeaseAwareVaultPropertySource {name='cf/0b24f466-9a54-4215-852e-2bcfab428a82/secret/application/cloud'}, LeaseAwareVaultPropertySource {name='cf/0b24f466-9a54-4215-852e-2bcfab428a82/secret/application'}]}
 ```
 
-28. Let's write a secret into the Vault to the given generic backend and send a refresh command.
+27. Let's write a secret into the Vault to the given generic backend and send a refresh command
 
 ```bash
 vault write cf/0b24f466-9a54-4215-852e-2bcfab428a82/secret/vault-demo message='Vault Rocks'
@@ -485,7 +538,7 @@ http post https://vault-demo-twiggiest-sennit.cfapps.io/actuator/refresh
 
 > Replace application URL with your own
 
-29. We can verify that the secret is retrieved via
+28. We can verify that the secret is retrieved via
 
 ```bash
 http get http://vault-demo-twiggiest-sennit.cfapps.io
